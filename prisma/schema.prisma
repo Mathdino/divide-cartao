@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now())
+  cards     Card[]
+
+  @@map("users")
+}
+
+model Card {
+  id        String   @id @default(cuid())
+  nickname  String
+  userId    String
+  month     Int
+  year      Int
+  createdAt DateTime @default(now())
+  
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cardUsers CardUser[]
+  expenses  Expense[]
+
+  @@map("cards")
+}
+
+model CardUser {
+  id        String   @id @default(cuid())
+  cardId    String
+  name      String
+  createdAt DateTime @default(now())
+  
+  card          Card          @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  expenseUsers  ExpenseUser[]
+
+  @@map("card_users")
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  cardId      String
+  amount      Float
+  description String
+  location    String
+  date        DateTime
+  createdAt   DateTime @default(now())
+  
+  card         Card          @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  expenseUsers ExpenseUser[]
+
+  @@map("expenses")
+}
+
+model ExpenseUser {
+  id         String @id @default(cuid())
+  expenseId  String
+  cardUserId String
+  amount     Float
+  
+  expense  Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  cardUser CardUser @relation(fields: [cardUserId], references: [id], onDelete: Cascade)
+
+  @@map("expense_users")
+}
