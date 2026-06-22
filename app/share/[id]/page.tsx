@@ -196,28 +196,17 @@ export default async function ShareCardPage({
                           <span className="inline-block text-[10px] font-semibold uppercase tracking-wide text-indigo-700 bg-indigo-100 rounded px-1.5 py-0.5 print:bg-white">
                             Dividido entre {expense.users.length} usuários
                           </span>
-                          <ul className="mt-1 space-y-0.5">
-                            {expense.users.map((u, i) => (
-                              <li
-                                key={u.name + i}
-                                className="flex items-center justify-between text-sm text-foreground"
-                              >
-                                <span>{u.name}</span>
-                                <span className="font-medium">R$ {u.amount.toFixed(2)}</span>
-                              </li>
-                            ))}
-                          </ul>
+                          <p className="mt-1 text-sm text-foreground">
+                            {expense.users.map((u) => u.name).join(", ")}
+                          </p>
                         </div>
                       ) : (
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="inline-flex items-center gap-1.5">
-                            <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700 bg-emerald-100 rounded px-1.5 py-0.5 print:bg-white">
-                              Usuário
-                            </span>
-                            <span className="font-medium text-foreground">{expense.users[0].name}</span>
+                        <span className="inline-flex items-center gap-1.5 text-sm">
+                          <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700 bg-emerald-100 rounded px-1.5 py-0.5 print:bg-white">
+                            Usuário
                           </span>
-                          <span className="font-medium text-foreground">R$ {expense.users[0].amount.toFixed(2)}</span>
-                        </div>
+                          <span className="font-medium text-foreground">{expense.users[0].name}</span>
+                        </span>
                       )}
                     </div>
                   </div>
