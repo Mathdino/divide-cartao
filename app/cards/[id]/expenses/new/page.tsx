@@ -6,10 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { MobileNav } from "@/components/mobile-nav"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Users, User } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
@@ -22,10 +21,11 @@ export default function NewExpensePage({ params }: { params: Promise<{ id: strin
   const { id: cardId } = use(params)
   const router = useRouter()
   const [cardUsers, setCardUsers] = useState<CardUser[]>([])
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([])
-  const [splitType, setSplitType] = useState<"equal" | "custom">("equal")
+  const [mode, setMode] = useState<"split" | "single">("split")
+  const [singleUserId, setSingleUserId] = useState<string>("")
   const [error, setError] = useState<string>("")
   const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     async function fetchCardUsers() {
@@ -33,6 +33,7 @@ export default function NewExpensePage({ params }: { params: Promise<{ id: strin
         const response = await fetch(`/api/cards/${cardId}/users`)
         const data = await response.json()
         setCardUsers(data)
+        if (data.length > 0) setSingleUserId(data[0].id)
         setLoading(false)
       } catch (err) {
         setError("Erro ao carregar pagantes")
@@ -42,27 +43,25 @@ export default function NewExpensePage({ params }: { params: Promise<{ id: strin
     fetchCardUsers()
   }, [cardId])
 
-  const toggleUser = (userId: string) => {
-    setSelectedUsers((prev) => (prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]))
-  }
-
-  const selectAll = () => {
-    setSelectedUsers(cardUsers.map((u) => u.id))
-  }
-
   const handleSubmit = async (formData: FormData) => {
-    if (selectedUsers.length === 0) {
-      setError("Selecione pelo menos um pagante")
+    setError("")
+
+    if (mode === "single" && !singleUserId) {
+      setError("Selecione o pagante")
       return
     }
 
     formData.append("cardId", cardId)
-    formData.append("selectedUsers", JSON.stringify(selectedUsers))
-    formData.append("splitType", splitType)
+    formData.append("mode", mode)
+    if (mode === "single") {
+      formData.append("cardUserId", singleUserId)
+    }
 
+    setSubmitting(true)
     const result = await createExpense(formData)
     if (result?.error) {
       setError(result.error)
+      setSubmitting(false)
     } else {
       router.push(`/cards/${cardId}`)
     }
@@ -88,7 +87,7 @@ export default function NewExpensePage({ params }: { params: Promise<{ id: strin
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-foreground">Novo Gasto</h1>
-            <p className="text-muted-foreground text-sm">Adicione um gasto ao cartão</p>
+            <p className="text-muted-foreground text-sm">Local, preço e como dividir</p>
           </div>
         </div>
 
@@ -99,79 +98,69 @@ export default function NewExpensePage({ params }: { params: Promise<{ id: strin
           <CardContent>
             <form action={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="amount">Valor (R$)</Label>
-                <Input id="amount" name="amount" type="number" step="0.01" placeholder="0.00" required />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Descrição</Label>
-                <Input id="description" name="description" type="text" placeholder="Ex: Compras do mercado" required />
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="location">Local</Label>
                 <Input id="location" name="location" type="text" placeholder="Ex: Supermercado XYZ" required />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="date">Data</Label>
-                <Input
-                  id="date"
-                  name="date"
-                  type="date"
-                  defaultValue={new Date().toISOString().split("T")[0]}
-                  required
-                />
+                <Label htmlFor="amount">Preço (R$)</Label>
+                <Input id="amount" name="amount" type="number" step="0.01" min="0.01" placeholder="0,00" required />
               </div>
 
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label>Tipo de Divisão</Label>
-                </div>
-                <RadioGroup value={splitType} onValueChange={(value) => setSplitType(value as "equal" | "custom")}>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="equal" id="equal" />
-                    <Label htmlFor="equal" className="font-normal cursor-pointer">
-                      Dividir igualmente entre selecionados
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="custom" id="custom" />
-                    <Label htmlFor="custom" className="font-normal cursor-pointer">
-                      Valor total para cada selecionado
-                    </Label>
-                  </div>
+              <div className="space-y-3">
+                <Label>Como lançar</Label>
+                <RadioGroup value={mode} onValueChange={(value) => setMode(value as "split" | "single")}>
+                  <label
+                    htmlFor="mode-split"
+                    className="flex items-center gap-3 p-3 rounded-lg border bg-muted cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+                  >
+                    <RadioGroupItem value="split" id="mode-split" />
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium">DIVIDIR entre todos</span>
+                  </label>
+                  <label
+                    htmlFor="mode-single"
+                    className="flex items-center gap-3 p-3 rounded-lg border bg-muted cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+                  >
+                    <RadioGroupItem value="single" id="mode-single" />
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium">Atribuir a um pagante</span>
+                  </label>
                 </RadioGroup>
               </div>
 
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label>Pagantes</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={selectAll}>
-                    Selecionar todos
-                  </Button>
-                </div>
-
+              {mode === "single" && (
                 <div className="space-y-3">
-                  {cardUsers.map((user) => (
-                    <div key={user.id} className="flex items-center space-x-3 p-3 bg-muted rounded-lg">
-                      <Checkbox
-                        id={user.id}
-                        checked={selectedUsers.includes(user.id)}
-                        onCheckedChange={() => toggleUser(user.id)}
-                      />
-                      <Label htmlFor={user.id} className="flex-1 cursor-pointer font-normal">
-                        {user.name}
-                      </Label>
-                    </div>
-                  ))}
+                  <Label>Pagante</Label>
+                  <div className="space-y-2">
+                    {cardUsers.map((user) => (
+                      <label
+                        key={user.id}
+                        htmlFor={`u-${user.id}`}
+                        className="flex items-center gap-3 p-3 rounded-lg border bg-muted cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+                      >
+                        <input
+                          type="radio"
+                          id={`u-${user.id}`}
+                          name="singleUser"
+                          className="accent-primary"
+                          checked={singleUserId === user.id}
+                          onChange={() => setSingleUserId(user.id)}
+                        />
+                        <span className="font-normal">{user.name}</span>
+                      </label>
+                    ))}
+                    {cardUsers.length === 0 && (
+                      <p className="text-sm text-muted-foreground">Nenhum pagante cadastrado neste cartão.</p>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {error && <p className="text-sm text-destructive">{error}</p>}
 
-              <Button type="submit" className="w-full">
-                Adicionar Gasto
+              <Button type="submit" className="w-full" disabled={submitting}>
+                {submitting ? "Salvando..." : "Adicionar Gasto"}
               </Button>
             </form>
           </CardContent>

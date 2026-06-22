@@ -6,12 +6,18 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Switch } from "@/components/ui/switch"
 import { MobileNav } from "@/components/mobile-nav"
 import { Plus, X, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 
+interface CardUserInput {
+  name: string
+  inSplit: boolean
+}
+
 export default function NewCardPage() {
-  const [cardUsers, setCardUsers] = useState<string[]>([""])
+  const [cardUsers, setCardUsers] = useState<CardUserInput[]>([{ name: "", inSplit: true }])
   const [error, setError] = useState<string>("")
 
   const now = new Date()
@@ -19,21 +25,29 @@ export default function NewCardPage() {
   const currentYear = now.getFullYear()
 
   const addCardUser = () => {
-    setCardUsers([...cardUsers, ""])
+    setCardUsers([...cardUsers, { name: "", inSplit: true }])
   }
 
   const removeCardUser = (index: number) => {
     setCardUsers(cardUsers.filter((_, i) => i !== index))
   }
 
-  const updateCardUser = (index: number, value: string) => {
+  const updateCardUserName = (index: number, value: string) => {
     const updated = [...cardUsers]
-    updated[index] = value
+    updated[index] = { ...updated[index], name: value }
+    setCardUsers(updated)
+  }
+
+  const updateCardUserSplit = (index: number, value: boolean) => {
+    const updated = [...cardUsers]
+    updated[index] = { ...updated[index], inSplit: value }
     setCardUsers(updated)
   }
 
   const handleSubmit = async (formData: FormData) => {
-    const filteredUsers = cardUsers.filter((u) => u.trim() !== "")
+    const filteredUsers = cardUsers
+      .map((u) => ({ name: u.name.trim(), inSplit: u.inSplit }))
+      .filter((u) => u.name !== "")
 
     if (filteredUsers.length === 0) {
       setError("Adicione pelo menos um pagante")
@@ -97,21 +111,34 @@ export default function NewCardPage() {
 
                 <div className="space-y-3">
                   {cardUsers.map((user, index) => (
-                    <div key={index} className="flex gap-2">
-                      <Input
-                        type="text"
-                        placeholder="Nome do pagante"
-                        value={user}
-                        onChange={(e) => updateCardUser(index, e.target.value)}
-                      />
-                      {cardUsers.length > 1 && (
-                        <Button type="button" variant="ghost" size="icon" onClick={() => removeCardUser(index)}>
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
+                    <div key={index} className="space-y-2 p-3 rounded-lg border bg-muted">
+                      <div className="flex gap-2">
+                        <Input
+                          type="text"
+                          placeholder="Nome do pagante"
+                          value={user.name}
+                          onChange={(e) => updateCardUserName(index, e.target.value)}
+                        />
+                        {cardUsers.length > 1 && (
+                          <Button type="button" variant="ghost" size="icon" onClick={() => removeCardUser(index)}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Entra na divisão</span>
+                        <Switch
+                          checked={user.inSplit}
+                          onCheckedChange={(v) => updateCardUserSplit(index, v)}
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Pagantes com "Entra na divisão" desligado não participam do "DIVIDIR entre todos" — só recebem gastos
+                  atribuídos diretamente a eles.
+                </p>
               </div>
 
               {error && <p className="text-sm text-destructive">{error}</p>}

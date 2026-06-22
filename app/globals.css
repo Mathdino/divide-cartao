@@ -125,3 +125,16 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Impressão / Salvar como PDF */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  @page {
+    margin: 12mm;
+  }
+  body {
+    background: #fff !important;
+  }
+}

@@ -48,6 +48,7 @@ async function runMigrations() {
         id TEXT PRIMARY KEY,
         card_id TEXT NOT NULL,
         name TEXT NOT NULL,
+        in_split BOOLEAN NOT NULL DEFAULT true,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -73,13 +74,27 @@ async function runMigrations() {
       );
     `);
     
-    // Then add foreign key constraints
+    // Upgrade: garante a coluna in_split em bancos já existentes.
+    await sql.query(`ALTER TABLE card_users ADD COLUMN IF NOT EXISTS in_split BOOLEAN NOT NULL DEFAULT true;`);
+
+    // Then add foreign key constraints (idempotent — skip if already present)
     console.log("Adding foreign key constraints...");
-    await sql.query(`ALTER TABLE cards ADD CONSTRAINT fk_cards_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;`);
-    await sql.query(`ALTER TABLE card_users ADD CONSTRAINT fk_card_users_card_id FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE;`);
-    await sql.query(`ALTER TABLE expenses ADD CONSTRAINT fk_expenses_card_id FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE;`);
-    await sql.query(`ALTER TABLE expense_users ADD CONSTRAINT fk_expense_users_expense_id FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE;`);
-    await sql.query(`ALTER TABLE expense_users ADD CONSTRAINT fk_expense_users_card_user_id FOREIGN KEY (card_user_id) REFERENCES card_users(id) ON DELETE CASCADE;`);
+    const addConstraint = async (statement: string) => {
+      try {
+        await sql.query(statement);
+      } catch (e: any) {
+        if (e?.code === "42710" || /already exists/i.test(e?.message || "")) {
+          // constraint already exists — safe to ignore on re-run
+          return;
+        }
+        throw e;
+      }
+    };
+    await addConstraint(`ALTER TABLE cards ADD CONSTRAINT fk_cards_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;`);
+    await addConstraint(`ALTER TABLE card_users ADD CONSTRAINT fk_card_users_card_id FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE;`);
+    await addConstraint(`ALTER TABLE expenses ADD CONSTRAINT fk_expenses_card_id FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE;`);
+    await addConstraint(`ALTER TABLE expense_users ADD CONSTRAINT fk_expense_users_expense_id FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE;`);
+    await addConstraint(`ALTER TABLE expense_users ADD CONSTRAINT fk_expense_users_card_user_id FOREIGN KEY (card_user_id) REFERENCES card_users(id) ON DELETE CASCADE;`);
     
     // Finally, create indexes
     console.log("Creating indexes...");

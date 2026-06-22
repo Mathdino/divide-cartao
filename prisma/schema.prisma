@@ -37,6 +37,7 @@ model CardUser {
   id        String   @id @default(cuid())
   cardId    String
   name      String
+  inSplit   Boolean  @default(true) @map("in_split")
   createdAt DateTime @default(now())
   
   card          Card          @relation(fields: [cardId], references: [id], onDelete: Cascade)

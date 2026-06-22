@@ -9,11 +9,13 @@ export interface SessionData {
   name: string
 }
 
+const SESSION_MAX_AGE = 60 * 60 * 24 * 365 // 1 ano
+
 export async function createSession(data: SessionData): Promise<string> {
   const token = await new SignJWT(data)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setExpirationTime("365d")
     .sign(secret)
 
   return token
@@ -39,7 +41,7 @@ export async function setSessionCookie(token: string): Promise<void> {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
+    maxAge: SESSION_MAX_AGE, // 1 ano — mantém o usuário logado
     path: "/",
   })
 }

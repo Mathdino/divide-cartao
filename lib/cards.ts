@@ -15,6 +15,7 @@ export interface CardWithDetails extends Card {
     id: string
     name: string
     total: number
+    inSplit: boolean
   }>
   expenses: Array<{
     id: string
@@ -74,14 +75,16 @@ export async function getCardById(cardId: string): Promise<CardWithDetails | nul
   const card = cardResult[0]
 
   const cardUsersResult = await sql`
-    SELECT 
+    SELECT
       cu.id,
       cu.name,
+      cu.in_split,
       COALESCE(SUM(eu.amount), 0) as total
     FROM card_users cu
     LEFT JOIN expense_users eu ON cu.id = eu.card_user_id
     WHERE cu.card_id = ${cardId}
-    GROUP BY cu.id, cu.name
+    GROUP BY cu.id, cu.name, cu.in_split
+    ORDER BY cu.name
   `
 
   const expensesResult = await sql`
@@ -103,6 +106,7 @@ export async function getCardById(cardId: string): Promise<CardWithDetails | nul
       id: row.id,
       name: row.name,
       total: Number.parseFloat(row.total),
+      inSplit: row.in_split,
     })),
     expenses: expensesResult.map((row: any) => ({
       id: row.id,

@@ -5,16 +5,21 @@ import { getSession } from "@/lib/session"
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
+import { splitAmount } from "@/lib/split"
 
-const createExpenseSchema = z.object({
-  cardId: z.string(),
-  amount: z.number().positive("Valor deve ser positivo"),
-  description: z.string().min(1, "Descrição é obrigatória"),
-  location: z.string().min(1, "Local é obrigatório"),
-  date: z.string(),
-  selectedUsers: z.array(z.string()).min(1, "Selecione pelo menos um pagante"),
-  splitType: z.enum(["equal", "custom"]),
-})
+// Novo gasto: somente Local + Preço + (DIVIDIR entre todos | atribuir a 1 pagante)
+const createExpenseSchema = z
+  .object({
+    cardId: z.string().min(1),
+    amount: z.number().positive("Valor deve ser positivo"),
+    location: z.string().min(1, "Local é obrigatório"),
+    mode: z.enum(["split", "single"]),
+    cardUserId: z.string().optional(),
+  })
+  .refine((d) => d.mode !== "single" || (d.cardUserId && d.cardUserId.length > 0), {
+    message: "Selecione o pagante",
+    path: ["cardUserId"],
+  })
 
 export async function createExpense(formData: FormData) {
   const session = await getSession()
@@ -22,17 +27,12 @@ export async function createExpense(formData: FormData) {
     redirect("/login")
   }
 
-  const selectedUsersRaw = formData.get("selectedUsers")
-  const selectedUsers = selectedUsersRaw ? JSON.parse(selectedUsersRaw as string) : []
-
   const validatedFields = createExpenseSchema.safeParse({
     cardId: formData.get("cardId"),
     amount: Number.parseFloat(formData.get("amount") as string),
-    description: formData.get("description"),
     location: formData.get("location"),
-    date: formData.get("date"),
-    selectedUsers,
-    splitType: formData.get("splitType"),
+    mode: formData.get("mode"),
+    cardUserId: (formData.get("cardUserId") as string) || undefined,
   })
 
   if (!validatedFields.success) {
@@ -41,31 +41,42 @@ export async function createExpense(formData: FormData) {
     }
   }
 
-  const { cardId, amount, description, location, date, selectedUsers: users, splitType } = validatedFields.data
+  const { cardId, amount, location, mode, cardUserId } = validatedFields.data
 
   const expenseId = crypto.randomUUID()
 
+  // description é NOT NULL no banco — usamos o local como descrição.
   await sql`
     INSERT INTO expenses (id, card_id, amount, description, location, date, created_at)
-    VALUES (${expenseId}, ${cardId}, ${amount}, ${description}, ${location}, ${date}, NOW())
+    VALUES (${expenseId}, ${cardId}, ${amount}, ${location}, ${location}, NOW(), NOW())
   `
 
-  if (splitType === "equal") {
-    const amountPerUser = amount / users.length
-
-    for (const userId of users) {
-      const expenseUserId = crypto.randomUUID()
-      await sql`
-        INSERT INTO expense_users (id, expense_id, card_user_id, amount)
-        VALUES (${expenseUserId}, ${expenseId}, ${userId}, ${amountPerUser})
-      `
-    }
+  if (mode === "single") {
+    // Atribui o valor total a um único pagante.
+    const expenseUserId = crypto.randomUUID()
+    await sql`
+      INSERT INTO expense_users (id, expense_id, card_user_id, amount)
+      VALUES (${expenseUserId}, ${expenseId}, ${cardUserId}, ${amount})
+    `
   } else {
-    for (const userId of users) {
+    // DIVIDIR igualmente entre os pagantes que ENTRAM na divisão (in_split = true).
+    const cardUsers = await sql`
+      SELECT id FROM card_users WHERE card_id = ${cardId} AND in_split = true ORDER BY name
+    `
+
+    if (cardUsers.length === 0) {
+      // Nenhum pagante na divisão: remove o gasto recém-criado e avisa.
+      await sql`DELETE FROM expenses WHERE id = ${expenseId}`
+      return { error: "Cadastre pelo menos um pagante que entre na divisão" }
+    }
+
+    const shares = splitAmount(amount, cardUsers.length)
+
+    for (let i = 0; i < cardUsers.length; i++) {
       const expenseUserId = crypto.randomUUID()
       await sql`
         INSERT INTO expense_users (id, expense_id, card_user_id, amount)
-        VALUES (${expenseUserId}, ${expenseId}, ${userId}, ${amount})
+        VALUES (${expenseUserId}, ${expenseId}, ${cardUsers[i].id}, ${shares[i]})
       `
     }
   }

@@ -3,11 +3,12 @@ import { getCardById, formatMonthYear } from "@/lib/cards"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { MobileNav } from "@/components/mobile-nav"
-import { ArrowLeft, Plus } from "lucide-react"
+import { ArrowLeft, Plus, FileDown } from "lucide-react"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { DeleteExpenseButton } from "@/components/delete-expense-button"
 import { ShareButton } from "@/components/share-button"
+import { AddCardUser } from "@/components/add-card-user"
 
 export default async function CardDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -37,6 +38,11 @@ export default async function CardDetailPage({ params }: { params: Promise<{ id:
             <h1 className="text-2xl font-bold text-foreground">{card.nickname}</h1>
             <p className="text-muted-foreground text-sm">{formatMonthYear(card.month, card.year)}</p>
           </div>
+          <Link href={`/share/${card.id}`}>
+            <Button variant="outline" size="icon" title="Gerar PDF">
+              <FileDown className="h-5 w-5" />
+            </Button>
+          </Link>
           <ShareButton cardId={card.id} />
         </div>
 
@@ -53,12 +59,19 @@ export default async function CardDetailPage({ params }: { params: Promise<{ id:
           <CardHeader>
             <CardTitle className="text-lg">Total por Pagante</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             {card.cardUsers.length > 0 ? (
               <div className="space-y-3">
                 {card.cardUsers.map((user) => (
                   <div key={user.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                    <span className="font-medium">{user.name}</span>
+                    <span className="font-medium flex items-center gap-2">
+                      {user.name}
+                      {!user.inSplit && (
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-700 bg-amber-100 rounded px-1.5 py-0.5">
+                          fora da divisão
+                        </span>
+                      )}
+                    </span>
                     <span className="font-semibold text-primary">R$ {user.total.toFixed(2)}</span>
                   </div>
                 ))}
@@ -66,6 +79,7 @@ export default async function CardDetailPage({ params }: { params: Promise<{ id:
             ) : (
               <p className="text-muted-foreground text-sm">Nenhum pagante cadastrado</p>
             )}
+            <AddCardUser cardId={card.id} />
           </CardContent>
         </Card>
 
@@ -88,8 +102,7 @@ export default async function CardDetailPage({ params }: { params: Promise<{ id:
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
-                        <p className="font-medium text-foreground">{expense.description}</p>
-                        <p className="text-sm text-muted-foreground">{expense.location}</p>
+                        <p className="font-medium text-foreground">{expense.location}</p>
                         <p className="text-xs text-muted-foreground mt-1">
                           {new Date(expense.date).toLocaleDateString("pt-BR")}
                         </p>
