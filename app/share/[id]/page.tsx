@@ -157,18 +157,23 @@ export default async function ShareCardPage({
           </Card>
         )}
 
-        {/* <Card className="shadow-lg print:shadow-none">
+        <Card className="shadow-lg print:shadow-none">
           <CardHeader>
             <CardTitle>Detalhamento de Gastos</CardTitle>
           </CardHeader>
           <CardContent>
             {card.expenses.length > 0 ? (
               <div className="space-y-3">
-                {card.expenses.map((expense) => (
+                {card.expenses.map((expense) => {
+                  const isSplit = expense.users.length > 1;
+                  return (
                   <div key={expense.id} className="p-4 bg-muted rounded-lg border border-border print:bg-white">
                     <div className="flex items-start justify-between gap-4 mb-2">
                       <div className="flex-1">
                         <p className="font-semibold text-foreground text-lg">{expense.location}</p>
+                        {expense.description && (
+                          <p className="text-sm text-muted-foreground">{expense.description}</p>
+                        )}
                       </div>
                       <p className="font-bold text-xl text-primary whitespace-nowrap">R$ {expense.amount.toFixed(2)}</p>
                     </div>
@@ -179,14 +184,51 @@ export default async function ShareCardPage({
                         year: "numeric",
                       })}
                     </p>
+
+                    {/* Quem pagou / se foi dividido */}
+                    <div className="mt-3 pt-3 border-t border-border">
+                      {expense.users.length === 0 ? (
+                        <span className="text-xs font-medium text-muted-foreground">
+                          Sem usuário atribuído
+                        </span>
+                      ) : isSplit ? (
+                        <div className="space-y-1">
+                          <span className="inline-block text-[10px] font-semibold uppercase tracking-wide text-indigo-700 bg-indigo-100 rounded px-1.5 py-0.5 print:bg-white">
+                            Dividido entre {expense.users.length} usuários
+                          </span>
+                          <ul className="mt-1 space-y-0.5">
+                            {expense.users.map((u, i) => (
+                              <li
+                                key={u.name + i}
+                                className="flex items-center justify-between text-sm text-foreground"
+                              >
+                                <span>{u.name}</span>
+                                <span className="font-medium">R$ {u.amount.toFixed(2)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700 bg-emerald-100 rounded px-1.5 py-0.5 print:bg-white">
+                              Usuário
+                            </span>
+                            <span className="font-medium text-foreground">{expense.users[0].name}</span>
+                          </span>
+                          <span className="font-medium text-foreground">R$ {expense.users[0].amount.toFixed(2)}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="text-muted-foreground text-center py-8">Nenhum gasto cadastrado</p>
             )}
           </CardContent>
-        </Card> */}
+        </Card>
 
         {/* Footer */}
         <div className="text-center text-sm text-muted-foreground pt-4">

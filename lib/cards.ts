@@ -23,6 +23,10 @@ export interface CardWithDetails extends Card {
     description: string
     location: string
     date: Date
+    users: Array<{
+      name: string
+      amount: number
+    }>
   }>
 }
 
@@ -94,6 +98,21 @@ export async function getCardById(cardId: string): Promise<CardWithDetails | nul
     ORDER BY date DESC
   `
 
+  const expenseUsersResult = await sql`
+    SELECT eu.expense_id, cu.name, eu.amount
+    FROM expense_users eu
+    JOIN card_users cu ON cu.id = eu.card_user_id
+    WHERE cu.card_id = ${cardId}
+    ORDER BY cu.name
+  `
+
+  const usersByExpense = new Map<string, Array<{ name: string; amount: number }>>()
+  for (const row of expenseUsersResult as any[]) {
+    const list = usersByExpense.get(row.expense_id) ?? []
+    list.push({ name: row.name, amount: Number.parseFloat(row.amount) })
+    usersByExpense.set(row.expense_id, list)
+  }
+
   return {
     id: card.id,
     nickname: card.nickname,
@@ -114,6 +133,7 @@ export async function getCardById(cardId: string): Promise<CardWithDetails | nul
       description: row.description,
       location: row.location,
       date: new Date(row.date),
+      users: usersByExpense.get(row.id) ?? [],
     })),
   }
 }
