@@ -1,31 +1,42 @@
-import { getCardById, formatMonthYear } from "@/lib/cards"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { CreditCardIcon, Calendar, Receipt, Trophy } from "lucide-react"
-import { notFound } from "next/navigation"
-import { PrintPdfButton } from "@/components/print-pdf-button"
-import { buildRanking } from "@/lib/ranking"
+import { getCardById, formatMonthYear } from "@/lib/cards";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CreditCardIcon, Calendar, Receipt, Trophy } from "lucide-react";
+import { notFound } from "next/navigation";
+import { PrintPdfButton } from "@/components/print-pdf-button";
+import { buildRanking } from "@/lib/ranking";
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  const card = await getCardById(id)
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const card = await getCardById(id);
   return {
     title: card ? `Gestor de Cartões - ${card.nickname}` : "Gestor de Cartões",
-  }
+  };
 }
 
-export default async function ShareCardPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  const card = await getCardById(id)
+export default async function ShareCardPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const card = await getCardById(id);
 
   if (!card) {
-    notFound()
+    notFound();
   }
 
-  const ranking = buildRanking(card.expenses)
+  const ranking = buildRanking(card.expenses);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 print:bg-white">
-      <div id="report" className="max-w-2xl mx-auto p-4 space-y-6 py-8 print:py-2">
+      <div
+        id="report"
+        className="max-w-2xl mx-auto p-4 space-y-6 py-8 print:py-2"
+      >
         {/* Botão PDF — escondido na impressão */}
         <div className="flex justify-end no-print">
           <PrintPdfButton />
@@ -38,7 +49,9 @@ export default async function ShareCardPage({ params }: { params: Promise<{ id: 
               <CreditCardIcon className="h-10 w-10" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-foreground">{card.nickname}</h1>
+          <h1 className="text-3xl font-bold text-foreground">
+            {card.nickname}
+          </h1>
           <div className="flex items-center justify-center gap-2 text-muted-foreground">
             <Calendar className="h-4 w-4" />
             <p>{formatMonthYear(card.month, card.year)}</p>
@@ -48,7 +61,9 @@ export default async function ShareCardPage({ params }: { params: Promise<{ id: 
         {/* Total Card */}
         <Card className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white border-0 shadow-xl print:shadow-none print:border print:text-black print:bg-white">
           <CardContent className="pt-8 pb-8 text-center">
-            <p className="text-blue-100 text-sm mb-2 print:text-gray-600">Total do Cartão</p>
+            <p className="text-blue-100 text-sm mb-2 print:text-gray-600">
+              Total do Cartão
+            </p>
             <p className="text-5xl font-bold">R$ {card.total.toFixed(2)}</p>
           </CardContent>
         </Card>
@@ -77,12 +92,16 @@ export default async function ShareCardPage({ params }: { params: Promise<{ id: 
                         </span>
                       )}
                     </span>
-                    <span className="font-bold text-xl text-primary">R$ {user.total.toFixed(2)}</span>
+                    <span className="font-bold text-xl text-primary">
+                      R$ {user.total.toFixed(2)}
+                    </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-muted-foreground text-center py-4">Nenhum pagante cadastrado</p>
+              <p className="text-muted-foreground text-center py-4">
+                Nenhum pagante cadastrado
+              </p>
             )}
           </CardContent>
         </Card>
@@ -119,13 +138,18 @@ export default async function ShareCardPage({ params }: { params: Promise<{ id: 
                         {i + 1}
                       </span>
                       <div className="min-w-0">
-                        <p className="font-medium text-foreground truncate">{item.label}</p>
+                        <p className="font-medium text-foreground truncate">
+                          {item.label}
+                        </p>
                         <p className="text-xs text-muted-foreground">
-                          {item.count} {item.count === 1 ? "lançamento" : "lançamentos"}
+                          {item.count}{" "}
+                          {item.count === 1 ? "lançamento" : "lançamentos"}
                         </p>
                       </div>
                     </div>
-                    <span className="font-bold text-primary whitespace-nowrap">R$ {item.total.toFixed(2)}</span>
+                    <span className="font-bold text-primary whitespace-nowrap">
+                      R$ {item.total.toFixed(2)}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -133,8 +157,7 @@ export default async function ShareCardPage({ params }: { params: Promise<{ id: 
           </Card>
         )}
 
-        {/* Expenses List */}
-        <Card className="shadow-lg print:shadow-none">
+        {/* <Card className="shadow-lg print:shadow-none">
           <CardHeader>
             <CardTitle>Detalhamento de Gastos</CardTitle>
           </CardHeader>
@@ -163,7 +186,7 @@ export default async function ShareCardPage({ params }: { params: Promise<{ id: 
               <p className="text-muted-foreground text-center py-8">Nenhum gasto cadastrado</p>
             )}
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* Footer */}
         <div className="text-center text-sm text-muted-foreground pt-4">
@@ -171,5 +194,5 @@ export default async function ShareCardPage({ params }: { params: Promise<{ id: 
         </div>
       </div>
     </div>
-  )
+  );
 }
